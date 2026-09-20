@@ -115,3 +115,26 @@ jobs:
             git commit -m "build: TTCC 1.15.0-ttcc.2"
             git push
           fi
+
+      - name: Purge jsDelivr cache
+        run: |
+          for path in package.json dist/userScript.js dist/service.js; do
+            echo "Purging $path"
+            curl --fail --silent --show-error --retry 3 "https://purge.jsdelivr.net/gh/p4veu/ttcc/$path"
+            echo
+          done
+
+      - name: Verify jsDelivr serves current version
+        run: |
+          for i in $(seq 1 12); do
+            body="$(curl --fail --silent --show-error "https://cdn.jsdelivr.net/gh/p4veu/ttcc/package.json" || true)"
+            echo "$body"
+            if echo "$body" | grep -q '"version": "1.15.0-ttcc.2"'; then
+              echo "jsDelivr is fresh."
+              exit 0
+            fi
+            echo "Still stale; retry $i/12..."
+            sleep 5
+          done
+          echo "jsDelivr still serves stale metadata."
+          exit 1
