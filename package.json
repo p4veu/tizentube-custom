@@ -1,0 +1,25 @@
+{
+  "name": "ttcc",
+  "appName": "TizenTube Custom",
+  "version": "1.15.0-ttcc.1",
+  "description": "TizenTube 1.15.0 with direct Turn off screen and safe wake handling.",
+  "packageType": "mods",
+  "websiteURL": "https://youtube.com/tv?additionalDataUrl=http%3A%2F%2Flocalhost%3A8085%2Fdial%2Fapps%2FYouTube",
+  "main": "dist/userScript.js",
+  "author": "Reis Can; TTCC patch",
+  "serviceFile": "dist/service.js",
+  "keys": [
+    "MediaPlayPause",
+    "MediaPlay",
+    "MediaPause",
+    "MediaStop",
+    "MediaFastForward",
+    "MediaRewind",
+    "MediaTrackNext",
+    "MediaTrackPrevious"
+  ],
+  "repository": {
+    "url": "https://github.com/p4veu/ttcc"
+  },
+  "license": "GPL-3.0-only"
+}
