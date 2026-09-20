@@ -1,0 +1,116 @@
+name: Build TTCC module
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - build_patch.py
+      - .github/workflows/build-ttcc.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout TTCC
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Fetch clean TizenTube 1.15.0 source
+        run: |
+          git clone https://github.com/reisxd/TizenTube.git upstream
+          cd upstream
+          git checkout 893b663d35efa558d8bdf9f54f0c4f9a31ab6a07
+          test "$(node -p "require('./package.json').version")" = "1.15.0"
+
+      - name: Apply TTCC patch
+        run: python3 build_patch.py upstream
+
+      - name: Build userscript
+        working-directory: upstream/mods
+        run: |
+          npm ci
+          npm run build
+
+      - name: Build DIAL service
+        working-directory: upstream/service
+        run: |
+          npm ci
+          npx rollup -c rollup.config.js
+
+      - name: Prepare module files
+        run: |
+          mkdir -p dist
+          cp upstream/dist/userScript.js dist/userScript.js
+          cp upstream/dist/service.js dist/service.js
+          cp upstream/LICENSE LICENSE
+          cat > package.json <<'EOF'
+          {
+            "name": "ttcc",
+            "appName": "TizenTube Custom",
+            "version": "1.15.0-ttcc.1",
+            "description": "TizenTube 1.15.0 with direct Turn off screen and safe wake handling.",
+            "packageType": "mods",
+            "websiteURL": "https://youtube.com/tv?additionalDataUrl=http%3A%2F%2Flocalhost%3A8085%2Fdial%2Fapps%2FYouTube",
+            "main": "dist/userScript.js",
+            "author": "Reis Can; TTCC patch",
+            "serviceFile": "dist/service.js",
+            "keys": [
+              "MediaPlayPause",
+              "MediaPlay",
+              "MediaPause",
+              "MediaStop",
+              "MediaFastForward",
+              "MediaRewind",
+              "MediaTrackNext",
+              "MediaTrackPrevious"
+            ],
+            "repository": {
+              "url": "https://github.com/p4veu/ttcc"
+            },
+            "license": "GPL-3.0-only"
+          }
+          EOF
+          cat > README.md <<'EOF'
+          # TTCC
+
+          Custom TizenBrew module built from the clean TizenTube 1.15.0 source
+          (upstream commit 893b663d35efa558d8bdf9f54f0c4f9a31ab6a07).
+
+          Changes:
+          - direct "Turn off screen / Wyłącz ekran" player button;
+          - safe wake-up: the first remote-key sequence only restores the picture;
+          - no global display:block restore, preventing Theme Configuration from appearing on wake;
+          - DIAL/casting launches gh/p4veu/ttcc rather than the upstream npm module.
+
+          Upstream: https://github.com/reisxd/TizenTube
+          License: GPL-3.0-only
+          EOF
+
+      - name: Verify built module
+        run: |
+          test -s dist/userScript.js
+          test -s dist/service.js
+          grep -q "TRANSPORT_CONTROLS_BUTTON_TYPE_TURN_OFF_SCREEN" dist/userScript.js
+          grep -q "__ttcc_screen_off_overlay" dist/userScript.js
+          grep -q "p4veu/ttcc" dist/service.js
+          grep -q '"main": "dist/userScript.js"' package.json
+          grep -q '"serviceFile": "dist/service.js"' package.json
+
+      - name: Commit generated module
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dist package.json LICENSE README.md
+          if ! git diff --cached --quiet; then
+            git commit -m "build: TTCC 1.15.0-ttcc.1"
+            git push
+          fi
