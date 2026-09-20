@@ -56,8 +56,8 @@ jobs:
           {
             "name": "ttcc",
             "appName": "TizenTube Custom",
-            "version": "1.15.0-ttcc.1",
-            "description": "TizenTube 1.15.0 with direct Turn off screen and safe wake handling.",
+            "version": "1.15.0-ttcc.2",
+            "description": "TizenTube 1.15.0 with direct Screen Off in engagement controls and fixed safe wake handling.",
             "packageType": "mods",
             "websiteURL": "https://youtube.com/tv?additionalDataUrl=http%3A%2F%2Flocalhost%3A8085%2Fdial%2Fapps%2FYouTube",
             "main": "dist/userScript.js",
@@ -101,6 +101,7 @@ jobs:
           test -s dist/service.js
           grep -q "TRANSPORT_CONTROLS_BUTTON_TYPE_TURN_OFF_SCREEN" dist/userScript.js
           grep -q "__ttcc_screen_off_overlay" dist/userScript.js
+          grep -q "TRANSPORT_CONTROLS_BUTTON_TYPE_TURN_OFF_SCREEN" dist/userScript.js
           grep -q "p4veu/ttcc" dist/service.js
           grep -q '"main": "dist/userScript.js"' package.json
           grep -q '"serviceFile": "dist/service.js"' package.json
@@ -111,6 +112,6 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add dist package.json LICENSE README.md
           if ! git diff --cached --quiet; then
-            git commit -m "build: TTCC 1.15.0-ttcc.1"
+            git commit -m "build: TTCC 1.15.0-ttcc.2"
             git push
           fi
