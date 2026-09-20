@@ -1,8 +1,8 @@
 {
   "name": "tizentube-custom-screenoff",
   "appName": "TizenTube Custom",
-  "version": "1.15.0-custom.5",
-  "description": "TizenTube custom: stable player + Mini Player button mapped to Turn off screen + wake fix.",
+  "version": "1.15.0-reset.1",
+  "description": "Clean reset: stock TizenTube player UI + confirmed Turn off screen wake fix only.",
   "packageType": "mods",
   "websiteURL": "https://youtube.com/tv?additionalDataUrl=http%3A%2F%2Flocalhost%3A8085%2Fdial%2Fapps%2FYouTube",
   "main": "userScript.js",
