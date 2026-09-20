@@ -11,10 +11,11 @@ def replace_once(path, old, new, label):
         raise SystemExit(f"{label}: expected exactly 1 match in {path}, found {count}")
     p.write_text(text.replace(old, new, 1), encoding="utf-8")
 
-# 1) Direct player-bar "Turn off screen" button.
-# We keep upstream Mini Player logic intact and add Screen Off at the FRONT of
-# the same player-actions group. This maximizes the chance it remains visible
-# on older/limited Leanback layouts where later buttons may be omitted.
+# Build from the clean upstream TizenTube 1.15.0 source and change only:
+# 1) direct Screen Off button placement,
+# 2) Screen Off wake-up behavior,
+# 3) DIAL/casting target.
+
 custom_ui = ROOT / "mods/ui/customUI.js"
 text = custom_ui.read_text(encoding="utf-8")
 
@@ -43,45 +44,39 @@ if text.count(setting_marker) != 1:
     raise SystemExit("customUI: playback-settings marker changed upstream")
 text = text.replace(setting_marker, screen_command + setting_marker, 1)
 
-old_wrapper = """        const origSettingActionGroup = inst[settingActionGroup];
-        if (configRead('enableMPButton')) {
-            inst[settingActionGroup] = function () {
-                const res = origSettingActionGroup.apply(this, arguments);
-                const idx = res.findIndex(item => item.type === 'TRANSPORT_CONTROLS_BUTTON_TYPE_PLAYBACK_SETTINGS');
-                res.find(item => item.type === 'TRANSPORT_CONTROLS_BUTTON_TYPE_PIP') || res.splice(idx, 0, pipCommand);
-                return res;
-            };
-        }"""
+# Keep the official Mini Player patch untouched. On this TV its action group
+# is not producing the small direct buttons, so Screen Off is injected into
+# engagementActions instead (the same group used by TizenTube's speed button).
+# Insert our wrapper LAST so it wraps all upstream engagement-action filters.
+prev_next_marker = """        if (configRead('enablePreviousNextButtons')) {"""
 
-new_wrapper = """        const origSettingActionGroup = inst[settingActionGroup];
-        if (typeof origSettingActionGroup === 'function') {
-            inst[settingActionGroup] = function () {
-                const res = origSettingActionGroup.apply(this, arguments);
-                if (!Array.isArray(res)) return res;
+screen_wrapper = """        if (engagementActionButton) {
+            const origScreenOffActionButton = inst[engagementActionButton];
+            if (typeof origScreenOffActionButton === 'function') {
+                inst[engagementActionButton] = function () {
+                    const res = origScreenOffActionButton.apply(this, arguments);
+                    if (!Array.isArray(res)) return res;
 
-                // Put Screen Off first so it is not pushed out by the limited
-                // number of player buttons on older Samsung / Leanback builds.
-                if (!res.find(item => item.type === 'TRANSPORT_CONTROLS_BUTTON_TYPE_TURN_OFF_SCREEN')) {
-                    res.unshift(screenOffCommand);
-                }
+                    if (!res.find(item => item.type === 'TRANSPORT_CONTROLS_BUTTON_TYPE_TURN_OFF_SCREEN')) {
+                        // Put it first so older/limited Leanback layouts do not
+                        // push it out when only a few small buttons are visible.
+                        res.unshift(screenOffCommand);
+                    }
 
-                // Preserve the official TizenTube Mini Player behavior.
-                if (configRead('enableMPButton') && !res.find(item => item.type === 'TRANSPORT_CONTROLS_BUTTON_TYPE_PIP')) {
-                    const idx = res.findIndex(item => item.type === 'TRANSPORT_CONTROLS_BUTTON_TYPE_PLAYBACK_SETTINGS');
-                    res.splice(idx >= 0 ? idx : res.length, 0, pipCommand);
-                }
+                    return res;
+                };
+            }
+        }
 
-                return res;
-            };
-        }"""
-if text.count(old_wrapper) != 1:
-    raise SystemExit("customUI: official settings wrapper changed upstream")
-text = text.replace(old_wrapper, new_wrapper, 1)
+"""
+if text.count(prev_next_marker) != 1:
+    raise SystemExit("customUI: previous/next marker changed upstream")
+text = text.replace(prev_next_marker, screen_wrapper + prev_next_marker, 1)
 custom_ui.write_text(text, encoding="utf-8")
 
-# 2) Replace upstream SCREEN_OFF implementation. The official 1.15.0 code
-# sets every body child to display:none and the wake handler later forces them
-# all to display:block. That is what can expose the hidden Theme Configuration.
+# Replace upstream SCREEN_OFF implementation. Upstream hides every body child
+# and ui.js later restores every one with display:block, which can expose the
+# normally hidden Theme Configuration panel.
 replace_once(
     "mods/resolveCommand.js",
     "import checkForUpdates from './features/updater.js';",
@@ -119,7 +114,6 @@ function removeOverlay() {
 }
 
 export function turnOffScreen() {
-    // Clean up any stale guard from a previous invocation.
     if (cleanupWakeGuard) {
         cleanupWakeGuard();
         cleanupWakeGuard = null;
@@ -127,9 +121,8 @@ export function turnOffScreen() {
 
     removeOverlay();
 
-    // IMPORTANT: do not set window.screenTurnedOffAt.
-    // TizenTube's stock ui.js watches that variable and, on wake, forces every
-    // body child to display:block. That can make Theme Configuration visible.
+    // Never use TizenTube's stock screenTurnedOffAt wake path. Its ui.js
+    // restores every body child with display:block and can show Theme Config.
     window.screenTurnedOffAt = null;
 
     const overlay = document.createElement('div');
@@ -147,13 +140,18 @@ export function turnOffScreen() {
     overlay.style.setProperty('background', '#000', 'important');
     overlay.style.setProperty('z-index', '2147483647', 'important');
     overlay.style.setProperty('pointer-events', 'none', 'important');
-
     (document.body || document.documentElement).appendChild(overlay);
 
     let waking = false;
     let wakeKeyCode = 0;
     let fallbackTimer = null;
     const types = ['keydown', 'keypress', 'keyup'];
+
+    // SCREEN_OFF is normally invoked by pressing OK. The keyup from THAT SAME
+    // press arrives after the overlay is created. v1 treated it as a wake key,
+    // so the picture came back immediately. Swallow the tail of the activation
+    // key for a short grace period, then arm normal wake-up.
+    const armAt = Date.now() + 600;
 
     const cleanup = () => {
         for (const type of types) {
@@ -167,10 +165,13 @@ export function turnOffScreen() {
     };
 
     const wakeGuard = (event) => {
-        // Window capture runs before TizenTube's document capture handler.
-        // Swallow the WHOLE first key sequence so the wake-up button cannot
-        // also open Theme Configuration (red / keyCode 403) or trigger YouTube.
+        // Window capture runs before TizenTube's document-capture handlers.
+        // Always swallow while Screen Off owns the first key sequence.
         swallow(event);
+
+        if (Date.now() < armAt) {
+            return false;
+        }
 
         const code = event.keyCode || event.which || 0;
 
@@ -179,7 +180,7 @@ export function turnOffScreen() {
             wakeKeyCode = code;
             removeOverlay();
 
-            // Some Samsung firmware/remotes may omit keyup.
+            // Fallback for Samsung firmware/remotes that do not emit keyup.
             fallbackTimer = setTimeout(cleanup, 900);
         }
 
@@ -191,23 +192,20 @@ export function turnOffScreen() {
     };
 
     cleanupWakeGuard = cleanup;
-
     for (const type of types) {
         window.addEventListener(type, wakeGuard, true);
     }
 }
 """
-p = ROOT / "mods/features/turnOffScreen.js"
-p.write_text(turn_off, encoding="utf-8")
+(ROOT / "mods/features/turnOffScreen.js").write_text(turn_off, encoding="utf-8")
 
-# Polish label for the existing playback-settings item and our direct button.
+# Polish label used by both the existing More settings item and direct button.
 pl = ROOT / "mods/translations/resources/pl.json"
 pl_text = pl.read_text(encoding="utf-8")
 if '"screenOff": "Turn off screen"' in pl_text:
     pl.write_text(pl_text.replace('"screenOff": "Turn off screen"', '"screenOff": "Wyłącz ekran"', 1), encoding="utf-8")
 
-# 3) Casting/DIAL must launch THIS GitHub module rather than the upstream npm
-# module, otherwise casting would silently jump back to official TizenTube.
+# Casting/DIAL must reopen this GitHub module, not the upstream npm module.
 replace_once(
     "service/service.js",
     "moduleName: '@foxreis/tizentube',",
@@ -221,4 +219,4 @@ replace_once(
     "DIAL module type"
 )
 
-print("TTCC patch applied successfully")
+print("TTCC v2 patch applied successfully")
