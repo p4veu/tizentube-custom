@@ -1,8 +1,8 @@
 {
   "name": "ttcc",
   "appName": "TizenTube Custom",
-  "version": "1.15.0-ttcc.1",
-  "description": "TizenTube 1.15.0 with direct Turn off screen and safe wake handling.",
+  "version": "1.15.0-ttcc.2",
+  "description": "TizenTube 1.15.0 with direct Screen Off in engagement controls and fixed safe wake handling.",
   "packageType": "mods",
   "websiteURL": "https://youtube.com/tv?additionalDataUrl=http%3A%2F%2Flocalhost%3A8085%2Fdial%2Fapps%2FYouTube",
   "main": "dist/userScript.js",
