@@ -6,7 +6,8 @@ Custom TizenBrew module built from the clean TizenTube 1.15.0 source
 Changes:
 - direct "Turn off screen / Wyłącz ekran" player button;
 - safe wake-up: the first non-media remote-key sequence only restores the picture;
-- Play/Pause keeps controlling playback while the Screen Off overlay stays black, including Samsung trailing key events;
+- Play/Pause keeps controlling playback while Screen Off stays black, including Samsung trailing key events;
+- blackout uses an html pseudo-element so resuming playback cannot remove it during a YouTube UI rerender;
 - no global display:block restore, preventing Theme Configuration from appearing on wake;
 - DIAL/casting launches gh/p4veu/ttcc rather than the upstream npm module.
 
