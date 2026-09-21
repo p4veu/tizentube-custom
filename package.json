@@ -1,8 +1,8 @@
 {
   "name": "ttcc",
   "appName": "TizenTube Custom",
-  "version": "1.15.0-ttcc.3",
-  "description": "TizenTube 1.15.0 with direct Screen Off, safe wake handling, and Play/Pause passthrough while the screen is off.",
+  "version": "1.15.0-ttcc.4",
+  "description": "TizenTube 1.15.0 with direct Screen Off, safe wake handling, and full Play/Pause event-sequence passthrough while the screen is off.",
   "packageType": "mods",
   "websiteURL": "https://youtube.com/tv?additionalDataUrl=http%3A%2F%2Flocalhost%3A8085%2Fdial%2Fapps%2FYouTube",
   "main": "dist/userScript.js",
