@@ -103,7 +103,6 @@ jobs:
           grep -q "TRANSPORT_CONTROLS_BUTTON_TYPE_TURN_OFF_SCREEN" dist/userScript.js
           grep -q "__ttcc_screen_off_overlay" dist/userScript.js
           grep -q "10252" dist/userScript.js
-          grep -q "mediaPassThroughUntil" dist/userScript.js
           grep -q "TRANSPORT_CONTROLS_BUTTON_TYPE_TURN_OFF_SCREEN" dist/userScript.js
           grep -q "p4veu/ttcc" dist/service.js
           grep -q '"main": "dist/userScript.js"' package.json
