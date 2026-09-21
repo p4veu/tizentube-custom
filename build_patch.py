@@ -106,10 +106,37 @@ function swallow(event) {
     } catch (_) {}
 }
 
-function removeOverlay() {
-    const overlay = document.getElementById('__ttcc_screen_off_overlay');
-    if (overlay && overlay.parentNode) {
-        overlay.parentNode.removeChild(overlay);
+function ensureBlackoutStyle() {
+    let style = document.getElementById('__ttcc_screen_off_style');
+    if (style) return;
+
+    style = document.createElement('style');
+    style.id = '__ttcc_screen_off_style';
+    style.textContent = [
+        'html[data-ttcc-screen-off="1"]::after {',
+        'content: "";',
+        'position: fixed;',
+        'left: 0;',
+        'top: 0;',
+        'right: 0;',
+        'bottom: 0;',
+        'width: 100vw;',
+        'height: 100vh;',
+        'margin: 0;',
+        'padding: 0;',
+        'background: #000;',
+        'z-index: 2147483647;',
+        'pointer-events: none;',
+        '}'
+    ].join('');
+    (document.head || document.documentElement).appendChild(style);
+}
+
+function setBlackout(active) {
+    if (active) {
+        document.documentElement.setAttribute('data-ttcc-screen-off', '1');
+    } else {
+        document.documentElement.removeAttribute('data-ttcc-screen-off');
     }
 }
 
@@ -119,28 +146,17 @@ export function turnOffScreen() {
         cleanupWakeGuard = null;
     }
 
-    removeOverlay();
+    setBlackout(false);
 
     // Never use TizenTube's stock screenTurnedOffAt wake path. Its ui.js
     // restores every body child with display:block and can show Theme Config.
     window.screenTurnedOffAt = null;
 
-    const overlay = document.createElement('div');
-    overlay.id = '__ttcc_screen_off_overlay';
-    overlay.setAttribute('aria-hidden', 'true');
-    overlay.style.setProperty('position', 'fixed', 'important');
-    overlay.style.setProperty('left', '0', 'important');
-    overlay.style.setProperty('top', '0', 'important');
-    overlay.style.setProperty('right', '0', 'important');
-    overlay.style.setProperty('bottom', '0', 'important');
-    overlay.style.setProperty('width', '100vw', 'important');
-    overlay.style.setProperty('height', '100vh', 'important');
-    overlay.style.setProperty('margin', '0', 'important');
-    overlay.style.setProperty('padding', '0', 'important');
-    overlay.style.setProperty('background', '#000', 'important');
-    overlay.style.setProperty('z-index', '2147483647', 'important');
-    overlay.style.setProperty('pointer-events', 'none', 'important');
-    (document.body || document.documentElement).appendChild(overlay);
+    // Keep the blackout outside YouTube's body DOM. When playback resumes,
+    // Leanback can rebuild parts of the body and remove injected elements.
+    // A CSS pseudo-element attached to <html> survives those rerenders.
+    ensureBlackoutStyle();
+    setBlackout(true);
 
     let waking = false;
     let wakeKeyCode = 0;
@@ -199,7 +215,7 @@ export function turnOffScreen() {
         if (!waking) {
             waking = true;
             wakeKeyCode = code;
-            removeOverlay();
+            setBlackout(false);
 
             // Fallback for Samsung firmware/remotes that do not emit keyup.
             fallbackTimer = setTimeout(cleanup, 900);
@@ -240,4 +256,4 @@ replace_once(
     "DIAL module type"
 )
 
-print("TTCC v4 patch applied successfully")
+print("TTCC v5 patch applied successfully")
