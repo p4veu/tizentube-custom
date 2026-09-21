@@ -1,5 +1,11 @@
 # TTCC
 
+**Status: FULLY WORKING / STABLE**
+**Current stable and latest tested version: 1.15.0-ttcc.5**
+
+This exact working build is preserved on branch:
+`stable-fully-working-ttcc-1.15.0-ttcc.5`
+
 Custom TizenBrew module built from the clean TizenTube 1.15.0 source
 (upstream commit 893b663d35efa558d8bdf9f54f0c4f9a31ab6a07).
 
@@ -10,6 +16,13 @@ Changes:
 - blackout uses an html pseudo-element so resuming playback cannot remove it during a YouTube UI rerender;
 - no global display:block restore, preventing Theme Configuration from appearing on wake;
 - DIAL/casting launches gh/p4veu/ttcc rather than the upstream npm module.
+
+Confirmed working on the target Samsung Tizen TV:
+- Screen Off works;
+- Pause does not wake the screen;
+- Play resumes playback without waking the screen;
+- normal non-media buttons can wake the picture;
+- Theme Configuration does not appear accidentally on wake.
 
 Upstream: https://github.com/reisxd/TizenTube
 License: GPL-3.0-only
