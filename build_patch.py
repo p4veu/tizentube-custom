@@ -145,6 +145,7 @@ export function turnOffScreen() {
     let waking = false;
     let wakeKeyCode = 0;
     let fallbackTimer = null;
+    let mediaPassThroughUntil = 0;
     const types = ['keydown', 'keypress', 'keyup'];
 
     // SCREEN_OFF is normally invoked by pressing OK. The keyup from THAT SAME
@@ -166,20 +167,32 @@ export function turnOffScreen() {
 
     const wakeGuard = (event) => {
         // Window capture runs before TizenTube's document-capture handlers.
+        const now = Date.now();
         const code = event.keyCode || event.which || 0;
+        const key = event.key || '';
 
-        // TTCC v3: Play/Pause controls playback WITHOUT waking the picture.
-        // Samsung Smart Remote: MediaPlayPause = 10252.
-        // Also allow separate MediaPlay (415) and MediaPause (19) keys.
-        // Do not swallow these events: YouTube must receive them normally.
-        if (code === 10252 || code === 415 || code === 19) {
+        // TTCC v4: Play/Pause must control playback without waking the picture.
+        // Some Samsung firmware emits a valid media keydown followed by a
+        // keypress/keyup with code 0 (or another translated tail event). v3
+        // passed the first event through but interpreted that tail as "wake".
+        // Once a media key is seen, pass the whole short event sequence through.
+        const isMediaPlayPause =
+            code === 10252 || code === 415 || code === 19 ||
+            key === 'MediaPlayPause' || key === 'MediaPlay' || key === 'MediaPause';
+
+        if (isMediaPlayPause) {
+            mediaPassThroughUntil = now + 900;
+            return true;
+        }
+
+        if (now < mediaPassThroughUntil) {
             return true;
         }
 
         // Every other key belongs to the Screen Off wake sequence.
         swallow(event);
 
-        if (Date.now() < armAt) {
+        if (now < armAt) {
             return false;
         }
 
@@ -227,4 +240,4 @@ replace_once(
     "DIAL module type"
 )
 
-print("TTCC v3 patch applied successfully")
+print("TTCC v4 patch applied successfully")

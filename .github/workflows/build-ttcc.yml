@@ -56,8 +56,8 @@ jobs:
           {
             "name": "ttcc",
             "appName": "TizenTube Custom",
-            "version": "1.15.0-ttcc.3",
-            "description": "TizenTube 1.15.0 with direct Screen Off, safe wake handling, and Play/Pause passthrough while the screen is off.",
+            "version": "1.15.0-ttcc.4",
+            "description": "TizenTube 1.15.0 with direct Screen Off, safe wake handling, and full Play/Pause event-sequence passthrough while the screen is off.",
             "packageType": "mods",
             "websiteURL": "https://youtube.com/tv?additionalDataUrl=http%3A%2F%2Flocalhost%3A8085%2Fdial%2Fapps%2FYouTube",
             "main": "dist/userScript.js",
@@ -88,7 +88,7 @@ jobs:
           Changes:
           - direct "Turn off screen / Wyłącz ekran" player button;
           - safe wake-up: the first non-media remote-key sequence only restores the picture;
-          - Play/Pause keeps controlling playback while the Screen Off overlay stays black;
+          - Play/Pause keeps controlling playback while the Screen Off overlay stays black, including Samsung trailing key events;
           - no global display:block restore, preventing Theme Configuration from appearing on wake;
           - DIAL/casting launches gh/p4veu/ttcc rather than the upstream npm module.
 
@@ -103,6 +103,7 @@ jobs:
           grep -q "TRANSPORT_CONTROLS_BUTTON_TYPE_TURN_OFF_SCREEN" dist/userScript.js
           grep -q "__ttcc_screen_off_overlay" dist/userScript.js
           grep -q "10252" dist/userScript.js
+          grep -q "mediaPassThroughUntil" dist/userScript.js
           grep -q "TRANSPORT_CONTROLS_BUTTON_TYPE_TURN_OFF_SCREEN" dist/userScript.js
           grep -q "p4veu/ttcc" dist/service.js
           grep -q '"main": "dist/userScript.js"' package.json
@@ -114,7 +115,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add dist package.json LICENSE README.md
           if ! git diff --cached --quiet; then
-            git commit -m "build: TTCC 1.15.0-ttcc.3"
+            git commit -m "build: TTCC 1.15.0-ttcc.4"
             git push
           fi
 
@@ -131,7 +132,7 @@ jobs:
           for i in $(seq 1 12); do
             body="$(curl --fail --silent --show-error "https://cdn.jsdelivr.net/gh/p4veu/ttcc/package.json" || true)"
             echo "$body"
-            if echo "$body" | grep -q '"version": "1.15.0-ttcc.3"'; then
+            if echo "$body" | grep -q '"version": "1.15.0-ttcc.4"'; then
               echo "jsDelivr is fresh."
               exit 0
             fi
