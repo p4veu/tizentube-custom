@@ -166,14 +166,22 @@ export function turnOffScreen() {
 
     const wakeGuard = (event) => {
         // Window capture runs before TizenTube's document-capture handlers.
-        // Always swallow while Screen Off owns the first key sequence.
+        const code = event.keyCode || event.which || 0;
+
+        // TTCC v3: Play/Pause controls playback WITHOUT waking the picture.
+        // Samsung Smart Remote: MediaPlayPause = 10252.
+        // Also allow separate MediaPlay (415) and MediaPause (19) keys.
+        // Do not swallow these events: YouTube must receive them normally.
+        if (code === 10252 || code === 415 || code === 19) {
+            return true;
+        }
+
+        // Every other key belongs to the Screen Off wake sequence.
         swallow(event);
 
         if (Date.now() < armAt) {
             return false;
         }
-
-        const code = event.keyCode || event.which || 0;
 
         if (!waking) {
             waking = true;
@@ -219,4 +227,4 @@ replace_once(
     "DIAL module type"
 )
 
-print("TTCC v2 patch applied successfully")
+print("TTCC v3 patch applied successfully")
